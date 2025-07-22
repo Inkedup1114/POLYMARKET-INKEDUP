@@ -1,0 +1,14 @@
+[Unit]
+Description=InkedUp Polymarket Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/polymarket-inkedup
+ExecStart=%h/polymarket-inkedup/.venv/bin/python -m inkedup_bot.cli scan --interval 15
+EnvironmentFile=%h/polymarket-inkedup/.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
