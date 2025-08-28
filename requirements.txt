@@ -17,4 +17,4 @@ pydantic==2.9.2
 pydantic-settings==2.3.4
 alembic==1.13.1
 sqlalchemy==2.0.25
-watchdog==4.0.0
+watchdog==6.0.0
