@@ -249,7 +249,7 @@ jobs:
         sarif_file: checkov-results.sarif
         
     - name: Run Kics Scan
-      uses: checkmarx/kics-github-action@v1.7.0
+      uses: checkmarx/kics-github-action@v2.1.13
       with:
         path: .
         fail_on: high,medium
