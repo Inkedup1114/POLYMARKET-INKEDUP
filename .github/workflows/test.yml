@@ -66,7 +66,7 @@ jobs:
         flags: unit
         
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: unit-test-results-${{ matrix.python-version }}
@@ -145,7 +145,7 @@ jobs:
           --tb=short
           
     - name: Upload integration test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: integration-test-results
@@ -231,7 +231,7 @@ jobs:
           --csv load-test
           
     - name: Upload load test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: load-test-results
@@ -276,7 +276,7 @@ jobs:
         poetry run mutmut show
         
     - name: Upload mutation test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: always()
       with:
         name: mutation-test-results
@@ -326,7 +326,7 @@ jobs:
           }
           
     - name: Upload test report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: combined-test-report
         path: test-report.md
