@@ -2,7 +2,7 @@
 # Optimized for production deployment with security hardening
 
 # Build stage
-FROM python:3.11-slim as builder
+FROM python:3.13-slim as builder
 
 # Build arguments
 ARG BUILD_DATE
@@ -34,7 +34,7 @@ ENV POETRY_NO_INTERACTION=1 \
 RUN poetry install --only=main --no-root && rm -rf $POETRY_CACHE_DIR
 
 # Production stage
-FROM python:3.11-slim as production
+FROM python:3.13-slim as production
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
