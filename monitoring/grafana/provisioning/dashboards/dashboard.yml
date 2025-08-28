@@ -1,0 +1,33 @@
+# Grafana dashboard provisioning for InkedUp monitoring
+apiVersion: 1
+
+providers:
+  # Main dashboards provider
+  - name: 'InkedUp Trading Bot'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: true
+
+  # System dashboards
+  - name: 'System Monitoring'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards/system
+      foldersFromFilesStructure: false
+
+  # Application dashboards  
+  - name: 'Application Monitoring'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards/application
+      foldersFromFilesStructure: false

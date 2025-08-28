@@ -1,4 +1,4 @@
-from typing import Generator, Tuple
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,7 +17,7 @@ def mock_clob_client() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def order_client(mock_clob_client: MagicMock) -> Tuple[OrderClient, MagicMock]:
+def order_client(mock_clob_client: MagicMock) -> tuple[OrderClient, MagicMock]:
     """Fixture to create an OrderClient and the mocked ClobClient instance."""
     cfg = BotConfig(private_key="test_key")
     state = StateManager(db_path=":memory:")
@@ -27,7 +27,7 @@ def order_client(mock_clob_client: MagicMock) -> Tuple[OrderClient, MagicMock]:
     return client, mock_instance
 
 
-def test_order_client_initialization(order_client: Tuple[OrderClient, MagicMock]):
+def test_order_client_initialization(order_client: tuple[OrderClient, MagicMock]):
     """Tests that the ClobClient is initialized correctly."""
     client, _ = order_client
     assert client.ready()
@@ -37,7 +37,7 @@ def test_order_client_initialization(order_client: Tuple[OrderClient, MagicMock]
     "inkedup_bot.order_client.asdict", return_value={"id": "12345", "status": "PENDING"}
 )
 def test_place_limit_order_success(
-    mock_asdict: MagicMock, order_client: Tuple[OrderClient, MagicMock]
+    mock_asdict: MagicMock, order_client: tuple[OrderClient, MagicMock]
 ):
     """Tests successful limit order placement."""
     client, mock_clob = order_client
@@ -51,7 +51,7 @@ def test_place_limit_order_success(
     assert "12345" in client.state.open_orders
 
 
-def test_place_limit_order_failure(order_client: Tuple[OrderClient, MagicMock]):
+def test_place_limit_order_failure(order_client: tuple[OrderClient, MagicMock]):
     """Tests failure scenarios for limit order placement."""
     client, mock_clob = order_client
     mock_clob.create_order.return_value = None
@@ -61,7 +61,7 @@ def test_place_limit_order_failure(order_client: Tuple[OrderClient, MagicMock]):
     assert order is None
 
 
-def test_cancel_all_orders(order_client: Tuple[OrderClient, MagicMock]):
+def test_cancel_all_orders(order_client: tuple[OrderClient, MagicMock]):
     """Tests cancelling all orders."""
     client, mock_clob = order_client
     mock_clob.cancel_all.return_value = ["123", "456"]
@@ -72,7 +72,7 @@ def test_cancel_all_orders(order_client: Tuple[OrderClient, MagicMock]):
     assert len(cancelled_orders) == 2
 
 
-def test_get_positions(order_client: Tuple[OrderClient, MagicMock]):
+def test_get_positions(order_client: tuple[OrderClient, MagicMock]):
     """Tests fetching positions."""
     client, mock_clob = order_client
     mock_position = MagicMock()

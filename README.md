@@ -107,6 +107,40 @@ Use VS Code tasks or run directly:
 
 ---
 
+## 🔒 Security
+
+This project implements comprehensive security measures for safe trading operations:
+
+### Security Features
+- **🔐 Secret Management**: Environment-based configuration with secret detection
+- **🛡️ API Security**: Rate limiting, authentication, and TLS encryption
+- **🔍 Vulnerability Scanning**: Automated dependency and code security scanning
+- **📊 Security Monitoring**: Real-time alerts and audit logging
+- **🏗️ Secure Deployment**: Non-root containers and infrastructure security
+
+### Quick Security Setup
+1. **Copy environment template**: `cp .env.example .env`
+2. **Generate secure keys**:
+   ```bash
+   # Generate JWT secret
+   openssl rand -base64 32
+   
+   # Generate private key (replace with your actual key)
+   echo "your_ethereum_private_key_here" > .env
+   ```
+3. **Run security scans**:
+   ```bash
+   # Check for secrets
+   detect-secrets scan --all-files --baseline .secrets.baseline
+   
+   # Security audit
+   pip-audit --format=json --output=security-report.json
+   ```
+
+See [SECURITY.md](./SECURITY.md) for complete security documentation and reporting procedures.
+
+---
+
 ## 🤖 AI Development
 
 This project uses **Context Engineering** to maximize AI assistant effectiveness:

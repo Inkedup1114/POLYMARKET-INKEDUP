@@ -1,0 +1,143 @@
+{
+  "export_metadata": {
+    "exported_at": "2025-08-27T17:51:36.593803",
+    "dashboard_version": "1.0"
+  },
+  "dashboard_data": {
+    "timestamp": "2025-08-27T17:51:36.577254",
+    "system_overview": {
+      "total_requests_1h": 10000,
+      "overall_hit_rate": 0.658,
+      "overall_error_rate": 0.0,
+      "active_caches": 3,
+      "system_health_score": 86.30951356089402,
+      "total_memory_usage_mb": 0.0,
+      "cache_efficiency_score": 0.0,
+      "api_calls_saved_1h": 0,
+      "database_queries_saved_1h": 0,
+      "average_latency_reduction_ms": 0.0
+    },
+    "cache_performance": {
+      "volatile_data": {
+        "cache_name": "volatile_data",
+        "time_window_minutes": 60,
+        "timestamp": "2025-08-27T17:51:36.572071",
+        "requests": {
+          "total": 3357,
+          "hits": 2989,
+          "misses": 368,
+          "errors": 0,
+          "evictions": 0
+        },
+        "rates": {
+          "hit_rate": 0.8903783139708072,
+          "miss_rate": 0.10962168602919273,
+          "error_rate": 0.0
+        },
+        "response_times_ms": {
+          "average": 0.009974518594977612,
+          "p95": 0.016450881958007812,
+          "p99": 0.023365020751953125,
+          "min": 0.0030994415283203125,
+          "max": 0.051021575927734375
+        },
+        "data": {
+          "average_size_bytes": 54.85680829708933,
+          "total_served_bytes": 163967,
+          "cache_efficiency": 145992.66100685135
+        },
+        "health_score": 95.61413510697278
+      },
+      "memory_constrained": {
+        "cache_name": "memory_constrained",
+        "time_window_minutes": 60,
+        "timestamp": "2025-08-27T17:51:36.574370",
+        "requests": {
+          "total": 3328,
+          "hits": 302,
+          "misses": 3026,
+          "errors": 0,
+          "evictions": 0
+        },
+        "rates": {
+          "hit_rate": 0.0907451923076923,
+          "miss_rate": 0.9092548076923077,
+          "error_rate": 0.0
+        },
+        "response_times_ms": {
+          "average": 0.00621521702179542,
+          "p95": 0.010967254638671875,
+          "p99": 0.016450881958007812,
+          "min": 0.00286102294921875,
+          "max": 0.047206878662109375
+        },
+        "data": {
+          "average_size_bytes": 58.682119205298015,
+          "total_served_bytes": 17722,
+          "cache_efficiency": 1608.186298076923
+        },
+        "health_score": 63.629186170605514
+      },
+      "high_performance": {
+        "cache_name": "high_performance",
+        "time_window_minutes": 60,
+        "timestamp": "2025-08-27T17:51:36.577144",
+        "requests": {
+          "total": 3315,
+          "hits": 3289,
+          "misses": 26,
+          "errors": 0,
+          "evictions": 0
+        },
+        "rates": {
+          "hit_rate": 0.9921568627450981,
+          "miss_rate": 0.00784313725490196,
+          "error_rate": 0.0
+        },
+        "response_times_ms": {
+          "average": 0.010551047001489147,
+          "p95": 0.016927719116210938,
+          "p99": 0.024557113647460938,
+          "min": 0.003814697265625,
+          "max": 0.09560585021972656
+        },
+        "data": {
+          "average_size_bytes": 58.0717543326239,
+          "total_served_bytes": 190998,
+          "cache_efficiency": 189499.97647058824
+        },
+        "health_score": 99.68521940510377
+      }
+    },
+    "alerts": {
+      "total_active": 0,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "recent_alerts": []
+    },
+    "cache_status": {
+      "market_data": {
+        "status": "active",
+        "last_refresh": "2025-08-27T17:51:36.577247",
+        "entries": 0,
+        "memory_mb": 0.0
+      },
+      "configuration": {
+        "status": "active",
+        "last_refresh": "2025-08-27T17:51:36.577250",
+        "entries": 0,
+        "memory_mb": 0.0
+      }
+    },
+    "recommendations": [
+      "memory_constrained: Consider increasing TTL or cache size (hit rate: 9.07%)"
+    ],
+    "trends": {
+      "hit_rate_trend": "stable",
+      "response_time_trend": "stable",
+      "error_rate_trend": "stable"
+    }
+  }
+}

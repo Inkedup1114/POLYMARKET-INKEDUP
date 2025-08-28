@@ -1,0 +1,62 @@
+# Grafana datasource configuration for InkedUp monitoring
+apiVersion: 1
+
+datasources:
+  # Primary Prometheus datasource
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus-uid
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: 2.45.0
+      cacheLevel: 'High'
+      disableRecordingRules: false
+      incrementalQueryOverlapWindow: 10m
+      queryTimeout: 60s
+      timeInterval: 15s
+    secureJsonData: {}
+
+  # Loki datasource for logs
+  - name: Loki
+    type: loki
+    uid: loki-uid
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: true
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        - datasourceUid: 'prometheus-uid'
+          matcherRegex: 'trace_id=(\\w+)'
+          name: 'TraceID'
+          url: '$${__value.raw}'
+    secureJsonData: {}
+
+  # AlertManager datasource
+  - name: AlertManager
+    type: alertmanager
+    uid: alertmanager-uid
+    access: proxy
+    url: http://alertmanager:9093
+    isDefault: false
+    editable: true
+    jsonData:
+      implementation: prometheus
+      handleGrafanaManagedAlerts: false
+    secureJsonData: {}
+
+# Additional datasource for testing (can be removed in production)
+  - name: TestData
+    type: testdata
+    uid: testdata-uid
+    access: proxy
+    isDefault: false
+    editable: true
+    jsonData: {}

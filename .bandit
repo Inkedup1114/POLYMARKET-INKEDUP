@@ -1,0 +1,69 @@
+[bandit]
+# Bandit configuration for security scanning
+
+# Test selection
+tests = B101,B102,B103,B104,B105,B106,B107,B108,B109,B110,B111,B112,B113,B201,B301,B302,B303,B304,B305,B306,B307,B308,B309,B310,B311,B312,B313,B314,B315,B316,B317,B318,B319,B320,B321,B322,B323,B324,B325,B401,B402,B403,B404,B405,B406,B407,B408,B409,B410,B411,B412,B413,B501,B502,B503,B504,B505,B506,B507,B601,B602,B603,B604,B605,B606,B607,B608,B609,B610,B611,B701,B702,B703
+
+# Skipped tests (with justification)
+skips = 
+    # B101: Test for use of assert (legitimate use in tests)
+    B101,
+    # B601: Test for shell injection via paramiko (we don't use paramiko)
+    B601
+
+# Exclude paths
+exclude_dirs = 
+    ./tests/,
+    ./.venv/,
+    ./build/,
+    ./dist/,
+    ./.git/,
+    ./docs/
+
+# Severity levels to include
+severity = low,medium,high
+
+# Confidence levels to include  
+confidence = low,medium,high
+
+# Output formatting
+# Available: csv,custom,html,json,screen,txt,xml,yaml
+format = json
+
+# Additional options
+recursive = true
+aggregate = file
+number = 3
+msg-template = {path}:{line}: [{msg_id}({symbol}), {obj}] {msg}
+
+# Hardcoded password patterns (add custom patterns if needed)
+[bandit.hardcoded_password_string]
+# Look for these suspicious variable names
+word_list = password,passwd,pwd,secret,token,key,api_key,auth
+
+[bandit.hardcoded_password_funcarg]
+# Look for hardcoded passwords in function arguments
+word_list = password,passwd,pwd,secret,token,key,api_key,auth
+
+[bandit.hardcoded_password_default]
+# Look for hardcoded passwords in default values
+word_list = password,passwd,pwd,secret,token,key,api_key,auth
+
+# SQL injection detection
+[bandit.sql_statements]
+# SQL keywords to flag
+sql_statements = 
+    select,insert,update,delete,create,drop,alter,grant,revoke,
+    union,order,group,having,where,from,join,into,values,set
+
+# Shell injection detection
+[bandit.shell_injection]
+# Shell commands to flag
+shell_builtins = 
+    rm,mv,cp,chmod,chown,sudo,su,wget,curl,nc,netcat,
+    eval,exec,system,popen,subprocess
+
+# Custom security rules (if needed)
+[bandit.custom_rules]
+# Path to custom rules directory (uncomment if you have custom rules)
+# rules_path = ./security/bandit_rules/

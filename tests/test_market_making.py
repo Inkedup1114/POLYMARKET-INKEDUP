@@ -120,8 +120,8 @@ def test_market_making_spread_filtering():
 def test_market_making_position_limits():
     """Test that position limits are respected."""
     config = MarketMakingConfig(
-        max_position_size=50.0, quote_size=10.0  # Small position limit
-    )
+        max_position_size=50.0, quote_size=10.0
+    )  # Small position limit
     strategy = MarketMakingStrategy(config)
 
     # Set up a large position that exceeds limits

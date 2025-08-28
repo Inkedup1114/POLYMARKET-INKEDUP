@@ -1,0 +1,235 @@
+# Prometheus configuration for production environment
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: 'production'
+    cluster: 'inkedup-production'
+    region: 'us-east-1'
+
+rule_files:
+  - "/etc/prometheus/rules/alerts.yml"
+  - "/etc/prometheus/rules/recording.yml"
+  - "/etc/prometheus/rules/business.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+      path_prefix: /alertmanager
+      scheme: http
+
+# Remote write for long-term storage (optional)
+# remote_write:
+#   - url: "https://prometheus-remote-write.example.com/api/v1/write"
+#     basic_auth:
+#       username: "your-username"
+#       password: "your-password"
+
+scrape_configs:
+  # InkedUp Polymarket Bot - High availability setup
+  - job_name: 'inkedup-bot-ha'
+    scrape_interval: 5s
+    scrape_timeout: 3s
+    metrics_path: /metrics
+    static_configs:
+      - targets: 
+          - 'app:8080'
+          - 'app-replica-2:8080'  
+          - 'app-replica-3:8080'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*):.*'
+        target_label: instance
+        replacement: '${1}'
+      - source_labels: [__address__]
+        regex: '.*:(.*)'
+        target_label: port
+        replacement: '${1}'
+
+  # Critical business metrics - more frequent scraping
+  - job_name: 'inkedup-critical-metrics'
+    scrape_interval: 2s
+    scrape_timeout: 1s
+    metrics_path: /metrics/critical
+    static_configs:
+      - targets: 
+          - 'app:8080'
+          - 'app-replica-2:8080'
+          - 'app-replica-3:8080'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'inkedup_(active_orders|position_pnl|risk_utilization|api_errors)_.*'
+        target_label: priority
+        replacement: 'critical'
+
+  # Database cluster monitoring
+  - job_name: 'postgres-primary'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['database:5432']
+    metrics_path: /metrics
+    relabel_configs:
+      - target_label: role
+        replacement: 'primary'
+      - target_label: database
+        replacement: 'postgresql'
+
+  # Redis monitoring with Sentinel support
+  - job_name: 'redis-cluster'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: /metrics
+    relabel_configs:
+      - target_label: service
+        replacement: 'redis'
+
+  # Load balancer monitoring
+  - job_name: 'nginx-lb'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: /nginx_status
+    relabel_configs:
+      - target_label: service
+        replacement: 'load-balancer'
+
+  # System and infrastructure monitoring
+  - job_name: 'node-exporter-cluster'
+    scrape_interval: 30s
+    static_configs:
+      - targets: 
+          - 'node-exporter:9100'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*):.*'
+        target_label: node
+        replacement: '${1}'
+
+  # Container resource monitoring
+  - job_name: 'cadvisor-cluster'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['cadvisor:8080']
+    metric_relabel_configs:
+      - source_labels: [container_label_com_docker_compose_service]
+        target_label: service
+      - source_labels: [container_label_com_docker_compose_project]
+        target_label: project
+
+  # External service monitoring
+  - job_name: 'blackbox-external'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://clob.polymarket.com/ping
+          - https://ws-subscriptions-clob.polymarket.com/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+      - target_label: service_type
+        replacement: 'external_api'
+
+  # Internal service health monitoring
+  - job_name: 'blackbox-internal'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://app:8080/health
+          - http://app:8080/readiness
+          - http://app-replica-2:8080/health
+          - http://app-replica-3:8080/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+      - target_label: service_type
+        replacement: 'internal_api'
+
+  # SSL certificate monitoring
+  - job_name: 'blackbox-ssl'
+    metrics_path: /probe
+    params:
+      module: [ssl_expiry]
+    static_configs:
+      - targets:
+          - app.inkedup.com:443
+          - api.inkedup.com:443
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
+  # Application performance monitoring
+  - job_name: 'inkedup-performance'
+    scrape_interval: 10s
+    metrics_path: /metrics/performance
+    static_configs:
+      - targets: 
+          - 'app:8080'
+          - 'app-replica-2:8080'
+          - 'app-replica-3:8080'
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'inkedup_(request_duration|db_query_duration|api_call_duration)_.*'
+        target_label: metric_category
+        replacement: 'performance'
+
+  # Business intelligence metrics
+  - job_name: 'inkedup-business-intelligence'
+    scrape_interval: 60s
+    metrics_path: /metrics/business
+    static_configs:
+      - targets: ['app:8080']
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'inkedup_(daily_volume|profit_loss|market_coverage|strategy_performance)_.*'
+        target_label: metric_category
+        replacement: 'business_intelligence'
+
+  # Alertmanager monitoring
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  # Prometheus federation (if using multiple Prometheus instances)
+  - job_name: 'prometheus-federation'
+    scrape_interval: 15s
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]':
+        - '{job=~"inkedup-.*"}'
+        - '{__name__=~"inkedup_.*"}'
+        - '{__name__=~"up|prometheus_.*"}'
+    static_configs:
+      - targets:
+        - 'prometheus:9090'
+
+  # Grafana monitoring
+  - job_name: 'grafana'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: /metrics
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

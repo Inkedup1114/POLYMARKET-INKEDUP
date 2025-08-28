@@ -1,0 +1,294 @@
+# Docker Compose configuration for production environment
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+      args:
+        BUILD_DATE: ${BUILD_DATE:-}
+        VERSION: ${IMAGE_TAG:-latest}
+        VCS_REF: ${VCS_REF:-}
+    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_REPOSITORY:-inkedup/polymarket-bot}:${IMAGE_TAG:-latest}
+    container_name: inkedup-bot-prod-1
+    ports:
+      - "8080:8080"
+    volumes:
+      - bot-data:/app/data
+      - bot-logs:/app/logs
+      - ./scripts/ssl:/app/ssl:ro
+    env_file:
+      - scripts/deployment/env/production.env
+    environment:
+      - BUILD_DATE=${BUILD_DATE:-}
+      - VERSION=${IMAGE_TAG:-latest}
+      - VCS_REF=${VCS_REF:-}
+      - CONTAINER_NAME=inkedup-bot-prod-1
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+    depends_on:
+      - database
+      - redis
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+  app-replica-2:
+    extends:
+      service: app
+    container_name: inkedup-bot-prod-2
+    environment:
+      - CONTAINER_NAME=inkedup-bot-prod-2
+
+  app-replica-3:
+    extends:
+      service: app
+    container_name: inkedup-bot-prod-3
+    environment:
+      - CONTAINER_NAME=inkedup-bot-prod-3
+
+  database:
+    image: postgres:15-alpine
+    container_name: inkedup-db-prod
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - db-backups:/var/lib/postgresql/backups
+      - ./scripts/sql/init-prod.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_DB=inkedup_production
+      - POSTGRES_USER=prod_user
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prod_user -d inkedup_production"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  redis:
+    image: redis:7-alpine
+    container_name: inkedup-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./scripts/redis/production.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD}
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  nginx:
+    image: nginx:alpine
+    container_name: inkedup-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./scripts/nginx/production.conf:/etc/nginx/conf.d/default.conf
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+    depends_on:
+      - app
+      - app-replica-2
+      - app-replica-3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: inkedup-prometheus-prod
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus-production.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/rules:/etc/prometheus/rules
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=90d'
+      - '--storage.tsdb.retention.size=50GB'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: inkedup-grafana-prod
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana-production:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SECURITY_DISABLE_GRAVATAR=true
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,grafana-worldmap-panel
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: inkedup-alertmanager-prod
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager-data:/alertmanager
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: inkedup-node-exporter-prod
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - inkedup-prod
+    restart: unless-stopped
+
+  backup:
+    image: postgres:15-alpine
+    container_name: inkedup-backup-prod
+    volumes:
+      - db-backups:/backups
+      - ./scripts/backup/backup.sh:/backup.sh
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+      - BACKUP_S3_BUCKET=${BACKUP_S3_BUCKET}
+    networks:
+      - inkedup-prod
+    restart: "no"
+    depends_on:
+      - database
+    command: ["/backup.sh"]
+
+volumes:
+  bot-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/inkedup/data
+  bot-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/log/inkedup
+  db-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/inkedup/postgres
+  db-backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/backups/inkedup
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+  nginx-logs:
+    driver: local
+
+networks:
+  inkedup-prod:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-inkedup-prod
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+          gateway: 172.30.0.1

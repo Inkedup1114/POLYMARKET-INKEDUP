@@ -8,7 +8,7 @@ from ..signals import SpreadSignal, TradingSignal
 class WideSpreadAlertStrategy:
     """Strategy that alerts on wide spreads."""
 
-    def __init__(self, spread_alert_bps: float):
+    def __init__(self, spread_alert_bps: float) -> None:
         self.spread_alert_bps = spread_alert_bps
 
     def on_spread(self, signal: SpreadSignal) -> TradingSignal | None:

@@ -1,0 +1,225 @@
+# Promtail configuration for InkedUp log collection
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    tenant_id: inkedup-trading
+
+scrape_configs:
+  # InkedUp application logs
+  - job_name: inkedup-app
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: inkedup-app
+          service: trading-bot
+          environment: production
+          __path__: /var/log/inkedup/*.log
+
+    pipeline_stages:
+      # Parse log level and timestamp
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (?P<level>\w+) - (?P<logger>[\w\.]+) - (?P<message>.*)'
+      
+      # Extract labels from parsed fields
+      - labels:
+          level:
+          logger:
+      
+      # Convert timestamp
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+          location: UTC
+
+  # System logs
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          service: system
+          __path__: /var/log/syslog
+
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\w+\s+\d+ \d{2}:\d{2}:\d{2}) (?P<hostname>\S+) (?P<service>\S+): (?P<message>.*)'
+      - labels:
+          hostname:
+          service:
+      - timestamp:
+          source: timestamp
+          format: Jan _2 15:04:05
+          location: UTC
+
+  # Docker container logs
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          service: containers
+          __path__: /var/lib/docker/containers/*/*.log
+
+    pipeline_stages:
+      # Parse Docker JSON log format
+      - json:
+          expressions:
+            output: log
+            stream: stream
+            attrs:
+      - json:
+          source: attrs
+          expressions:
+            tag:
+      - regex:
+          source: tag
+          expression: '(?P<container_name>[^/]+)'
+      - labels:
+          stream:
+          container_name:
+      - output:
+          source: output
+
+  # Trading-specific logs with enhanced parsing
+  - job_name: trading-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: trading-logs
+          service: trading
+          component: orders
+          __path__: /var/log/inkedup/trading/*.log
+
+    pipeline_stages:
+      # Parse trading log format
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (?P<level>\w+) - (?P<component>[\w\.]+) - (?P<action>\w+) - (?P<message>.*)'
+      
+      - labels:
+          level:
+          component:
+          action:
+      
+      # Extract trading-specific fields
+      - regex:
+          source: message
+          expression: 'order_id=(?P<order_id>\w+)|market=(?P<market>\w+)|price=(?P<price>[\d\.]+)|amount=(?P<amount>[\d\.]+)'
+      
+      - labels:
+          order_id:
+          market:
+      
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+
+  # WebSocket logs
+  - job_name: websocket-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: websocket-logs
+          service: websocket
+          component: connection
+          __path__: /var/log/inkedup/websocket/*.log
+
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (?P<level>\w+) - (?P<event>[\w_]+) - (?P<message>.*)'
+      
+      - labels:
+          level:
+          event:
+      
+      # Extract connection details
+      - regex:
+          source: message
+          expression: 'connection_id=(?P<connection_id>\w+)|endpoint=(?P<endpoint>[\w\.:/]+)|status=(?P<status>\w+)'
+      
+      - labels:
+          connection_id:
+          endpoint:
+          status:
+      
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+
+  # Database logs
+  - job_name: database-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: database-logs
+          service: database
+          component: queries
+          __path__: /var/log/inkedup/database/*.log
+
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (?P<level>\w+) - (?P<operation>\w+) - duration=(?P<duration>[\d\.]+)ms - (?P<message>.*)'
+      
+      - labels:
+          level:
+          operation:
+      
+      # Create duration metric
+      - metrics:
+          query_duration_seconds:
+            type: Histogram
+            description: "Database query duration"
+            source: duration
+            config:
+              buckets: [0.001, 0.01, 0.1, 0.5, 1, 2, 5]
+      
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+
+  # Error logs with special handling
+  - job_name: error-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: error-logs
+          service: errors
+          severity: error
+          __path__: /var/log/inkedup/errors/*.log
+
+    pipeline_stages:
+      - regex:
+          expression: '(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - ERROR - (?P<component>[\w\.]+) - (?P<error_type>\w+) - (?P<message>.*)'
+      
+      - labels:
+          component:
+          error_type:
+      
+      # Extract stack trace if present
+      - multiline:
+          firstline: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}'
+          max_wait_time: 3s
+      
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05,000'
+
+# Global configuration
+global:
+  scrape_timeout: 10s
+
+# Tracing configuration (optional)
+tracing:
+  enabled: false

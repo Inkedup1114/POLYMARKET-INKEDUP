@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, AsyncGenerator, List, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -197,7 +198,7 @@ class DatabaseManager:
             )
         """
         )
-        
+
         # Create indices for performance
         await db.execute(
             "CREATE INDEX IF NOT EXISTS idx_outcome_exposures_market ON outcome_exposures(market_slug)"
@@ -263,7 +264,7 @@ class DatabaseManager:
 
     async def get_outcome_exposure(
         self, market_slug: str, outcome_id: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Get outcome exposure by market and outcome ID."""
         async with self.connection() as db:
             async with db.execute(

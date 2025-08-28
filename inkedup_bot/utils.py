@@ -9,16 +9,38 @@ import aiohttp
 import orjson
 
 from .config import BotConfig
+from .rate_limiter import APIRateLimiter, EndpointType
 
 log = logging.getLogger("utils")
 JSONHeaders = {"Accept": "application/json", "Content-Type": "application/json"}
 
 
 class HTTPClient:
-    def __init__(self, base_url: str, timeout: int = 12):
+    def __init__(
+        self,
+        base_url: str,
+        timeout: int = 12,
+        rate_limiter: APIRateLimiter | None = None,
+    ):
         self.base_url = base_url.rstrip("/")
         self._session: aiohttp.ClientSession | None = None
         self.timeout = timeout
+        self.rate_limiter = rate_limiter
+
+    def _get_endpoint_type(self, path: str) -> EndpointType:
+        """Determine the endpoint type based on the URL path."""
+        path_lower = path.lower()
+
+        if "/auth" in path_lower or "/login" in path_lower or "/token" in path_lower:
+            return EndpointType.AUTHENTICATION
+        elif "/order" in path_lower:
+            return EndpointType.ORDER_MANAGEMENT
+        elif "/position" in path_lower or "/balance" in path_lower:
+            return EndpointType.POSITION_QUERIES
+        elif "/market" in path_lower or "/book" in path_lower or "/price" in path_lower:
+            return EndpointType.MARKET_DATA
+        else:
+            return EndpointType.GENERAL
 
     async def __aenter__(self):
         if self._session is None:
@@ -33,18 +55,44 @@ class HTTPClient:
     async def get(self, path: str, params: dict | None = None) -> Any:
         url = path if path.startswith("http") else f"{self.base_url}{path}"
         assert self._session
-        async with self._session.get(url, params=params, headers=JSONHeaders) as r:
-            r.raise_for_status()
-            return orjson.loads(await r.read())
+
+        # Apply rate limiting if configured
+        if self.rate_limiter:
+            endpoint_type = self._get_endpoint_type(path)
+            await self.rate_limiter.acquire(endpoint_type)
+
+        try:
+            async with self._session.get(url, params=params, headers=JSONHeaders) as r:
+                r.raise_for_status()
+                return orjson.loads(await r.read())
+        except aiohttp.ClientResponseError as e:
+            if e.status == 429 and self.rate_limiter:  # Rate limited
+                endpoint_type = self._get_endpoint_type(path)
+                await self.rate_limiter.handle_rate_limit_error(endpoint_type)
+                # Re-raise the error so caller can handle retry logic
+            raise
 
     async def post(self, path: str, json: Any) -> Any:
         url = path if path.startswith("http") else f"{self.base_url}{path}"
         assert self._session
-        async with self._session.post(
-            url, data=orjson.dumps(json), headers=JSONHeaders
-        ) as r:
-            r.raise_for_status()
-            return orjson.loads(await r.read())
+
+        # Apply rate limiting if configured
+        if self.rate_limiter:
+            endpoint_type = self._get_endpoint_type(path)
+            await self.rate_limiter.acquire(endpoint_type)
+
+        try:
+            async with self._session.post(
+                url, data=orjson.dumps(json), headers=JSONHeaders
+            ) as r:
+                r.raise_for_status()
+                return orjson.loads(await r.read())
+        except aiohttp.ClientResponseError as e:
+            if e.status == 429 and self.rate_limiter:  # Rate limited
+                endpoint_type = self._get_endpoint_type(path)
+                await self.rate_limiter.handle_rate_limit_error(endpoint_type)
+                # Re-raise the error so caller can handle retry logic
+            raise
 
 
 async def gather_limited(n: int, coros: Iterable):
@@ -90,7 +138,18 @@ def complement_deviation(
 
 
 async def fetch_markets(cfg: BotConfig) -> list[dict]:
-    async with HTTPClient(cfg.api_base) as http:
+    # Create rate limiter if rate limiting is enabled
+    rate_limiter = None
+    if cfg.rate_limiting.enabled:
+        from .rate_limiter import APIRateLimiter, EndpointType
+
+        rate_limiter = APIRateLimiter(cfg.rate_limiting.default_config)
+
+        # Configure endpoint-specific rate limits
+        for endpoint_type, config in cfg.rate_limiting.endpoint_configs.items():
+            rate_limiter.configure_endpoint(endpoint_type, config)
+
+    async with HTTPClient(str(cfg.api_base), rate_limiter=rate_limiter) as http:
         try:
             data = await http.get("/markets")
         except Exception as e:

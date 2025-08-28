@@ -1,6 +1,5 @@
 import unittest
-from unittest.mock import MagicMock, Mock
-import pytest
+from unittest.mock import MagicMock
 
 from inkedup_bot.config import BotConfig
 from inkedup_bot.risk import RiskManager

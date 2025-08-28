@@ -35,21 +35,18 @@ class WSStream:
     async def _connect(self):
         """Establish WebSocket connection with comprehensive error handling."""
         url = self.cfg.ws_url.rstrip("/") + "/ws/"
-        
+
         try:
             # Create session with timeout
             timeout = aiohttp.ClientTimeout(total=30, connect=10)
             session = aiohttp.ClientSession(timeout=timeout)
-            
+
             # Connect with retry and timeout
             self._ws = await session.ws_connect(
-                url,
-                heartbeat=25,
-                compress=True,
-                max_msg_size=0
+                url, heartbeat=25, compress=True, max_msg_size=0
             )
             log.info("WS connected successfully.")
-            
+
             # Subscribe to market data
             subscribe = {
                 "type": "subscribe",
@@ -58,36 +55,39 @@ class WSStream:
                 "initial_dump": True,
             }
             await self._ws.send_str(json.dumps(subscribe))
-            
+
             # Message processing loop with timeout
             while not self._stop.is_set():
                 try:
                     msg = await asyncio.wait_for(
                         self._ws.receive(),
-                        timeout=30.0  # 30 second timeout for messages
+                        timeout=30.0,  # 30 second timeout for messages
                     )
-                    
+
                     if msg.type == aiohttp.WSMsgType.TEXT:
                         await self._handle_message(msg)
                     elif msg.type == aiohttp.WSMsgType.BINARY:
                         log.debug("Received binary message, ignoring")
-                    elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                    elif msg.type in (
+                        aiohttp.WSMsgType.CLOSED,
+                        aiohttp.WSMsgType.ERROR,
+                    ):
                         raise ConnectionError("WS closed/error - triggering reconnect")
                     elif msg.type == aiohttp.WSMsgType.PONG:
                         log.debug("Received WS pong")
                     else:
                         log.debug(f"Received unexpected message type: {msg.type}")
-                        
-                except asyncio.TimeoutError:
+
+                except TimeoutError:
                     log.warning("WebSocket receive timeout - sending ping")
                     if self._ws and not self._ws.closed:
                         await self._ws.ping()
-                        
+
                 except Exception as e:
                     log.error(f"Error processing WebSocket message: {e}")
                     raise
-                    
-        except asyncio.TimeoutError:
+
+        except TimeoutError:
             log.error("WebSocket connection timeout")
             raise
         except aiohttp.ClientError as e:

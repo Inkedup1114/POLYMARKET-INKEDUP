@@ -1,0 +1,44 @@
+# Global ownership
+* @inkedup-team
+
+# Security-sensitive files require security team review
+.github/workflows/security.yml @inkedup-security @inkedup-team
+.secrets.baseline @inkedup-security @inkedup-team
+SECURITY.md @inkedup-security @inkedup-team
+.env.example @inkedup-security @inkedup-team
+
+# Infrastructure and deployment
+docker-compose*.yml @inkedup-devops @inkedup-team
+Dockerfile @inkedup-devops @inkedup-team
+scripts/deployment/ @inkedup-devops @inkedup-team
+scripts/disaster_recovery/ @inkedup-devops @inkedup-security @inkedup-team
+
+# Core trading components
+inkedup_bot/order_client.py @inkedup-trading @inkedup-team
+inkedup_bot/risk/ @inkedup-trading @inkedup-team
+inkedup_bot/strategies/ @inkedup-trading @inkedup-team
+inkedup_bot/position_manager.py @inkedup-trading @inkedup-team
+
+# Database and configuration
+inkedup_bot/database*.py @inkedup-backend @inkedup-team
+inkedup_bot/config*.py @inkedup-backend @inkedup-team
+inkedup_bot/migrations/ @inkedup-backend @inkedup-team
+
+# API and WebSocket components
+inkedup_bot/ws_*.py @inkedup-backend @inkedup-team
+inkedup_bot/enhanced_*.py @inkedup-backend @inkedup-team
+inkedup_bot/handlers/ @inkedup-backend @inkedup-team
+
+# Performance and monitoring
+inkedup_bot/performance_*.py @inkedup-devops @inkedup-team
+inkedup_bot/monitoring/ @inkedup-devops @inkedup-team
+inkedup_bot/cache*.py @inkedup-backend @inkedup-team
+
+# Documentation
+*.md @inkedup-docs @inkedup-team
+docs/ @inkedup-docs @inkedup-team
+
+# Tests requiring careful review
+tests/test_security.py @inkedup-security @inkedup-team
+tests/test_risk*.py @inkedup-trading @inkedup-team
+tests/test_performance*.py @inkedup-devops @inkedup-team

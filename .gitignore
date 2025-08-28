@@ -1,5 +1,8 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
 *.pyo
 *.pyd
 *.egg-info/
@@ -7,19 +10,153 @@ __pycache__/
 .dist/
 build/
 dist/
+
+# Virtual environments
 .venv/
+.virtualenv/
+venv/
+ENV/
+env/
+
+# Environment variables and secrets
 .env
 .env.*
+!.env.example
+!.env.template
+*.key
+*.pem
+*.p12
+*.pfx
+secrets.yaml
+secrets.json
+
+# Configuration files with secrets
+config.yaml
+config.json
+**/config/production.yaml
+**/config/staging.yaml
+**/secrets/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# Logs and temporary files
 logs/
 *.log
+*.log.*
+log/
 cache/
-*.sqlite3
-.ipynb_checkpoints/
-.coverage*
-pytest-cache/
+tmp/
+temp/
+.tmp/
+
+# Test coverage reports
+.coverage
+.coverage.*
 htmlcov/
+.pytest_cache/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Documentation build
+docs/_build/
+site/
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Docker
+*.dockerignore
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# Backups and dumps
+*.bak
+*.backup
+*.dump
+*.sql
+backups/
+snapshots/
+
+# Performance and profiling
+*.prof
+profiles/
+.profiling/
+
+# Cache directories
+.cache/
+.mypy_cache/
+.ruff_cache/
+.pylint.d/
+
+# PyCharm
+.idea/
+
+# Monitoring and metrics data  
+prometheus_data/
+grafana_data/
+monitoring/data/
+*.prometheus
+*.metrics
+
+# Security scanning results
+bandit-report.*
+safety-report.*
+pip-audit-report.*
+semgrep-report.*
+*.sarif
+
+# Runtime files
+*.pid
+*.sock
+
+# Temporary testing databases
+test*.db
+debug*.db
+*_test.db
+*_debug.db
+
+# Local development files
+local_settings.py
+local_config.py
+development.py
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Package files
+*.deb
+*.rpm
+*.msi
+
+# Compiled documentation
+docs/build/

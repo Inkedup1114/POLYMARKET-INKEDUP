@@ -1,0 +1,151 @@
+# Prometheus configuration for InkedUp Polymarket Trading Bot monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'inkedup-trading-bot'
+
+# Load rules once and periodically evaluate them according to the global 'evaluation_interval'
+rule_files:
+  - "alert_rules.yml"
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # InkedUp Trading Bot application metrics
+  - job_name: 'inkedup-app'
+    static_configs:
+      - targets: ['host.docker.internal:8080']  # Health check server
+    scrape_interval: 10s
+    metrics_path: /metrics
+    scheme: http
+    basic_auth:
+      username: ''
+      password: ''
+    scrape_timeout: 10s
+    
+  # InkedUp Trading Bot Prometheus metrics endpoint
+  - job_name: 'inkedup-metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8080']  # Main application
+    scrape_interval: 15s
+    metrics_path: /metrics/prometheus
+    scheme: http
+    
+  # System metrics via Node Exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+    
+  # Container metrics via cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+    
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    
+  # AlertManager monitoring
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    scrape_interval: 30s
+    
+  # Grafana monitoring
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 30s
+    metrics_path: /metrics
+    
+  # Additional trading-specific endpoints
+  - job_name: 'inkedup-trading'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    scrape_interval: 10s
+    metrics_path: /performance/trading
+    scheme: http
+    scrape_timeout: 10s
+    
+  # Database performance metrics
+  - job_name: 'inkedup-database'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+    scrape_interval: 20s
+    metrics_path: /performance/resources
+    scheme: http
+    scrape_timeout: 15s
+
+# Recording rules for commonly used queries
+recording_rules:
+  - name: 'inkedup.rules'
+    rules:
+      # Trading performance rules
+      - record: inkedup:order_success_rate
+        expr: |
+          (
+            rate(inkedup_orders_successful_total[5m]) /
+            (rate(inkedup_orders_successful_total[5m]) + rate(inkedup_orders_failed_total[5m]))
+          ) * 100
+      
+      - record: inkedup:avg_order_latency_ms
+        expr: |
+          rate(inkedup_order_latency_ms_sum[5m]) /
+          rate(inkedup_order_latency_ms_count[5m])
+      
+      # System performance rules
+      - record: inkedup:cpu_usage_percent
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+      
+      - record: inkedup:memory_usage_percent
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+      
+      - record: inkedup:disk_usage_percent
+        expr: |
+          (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100
+      
+      # WebSocket connection health
+      - record: inkedup:websocket_connection_health
+        expr: |
+          avg_over_time(inkedup_websocket_connected[5m])
+      
+      # Error rate calculations
+      - record: inkedup:error_rate_5m
+        expr: |
+          (
+            rate(inkedup_errors_total[5m]) /
+            (rate(inkedup_requests_total[5m]) + rate(inkedup_errors_total[5m]))
+          ) * 100
+
+# Remote write configuration (optional - for long-term storage)
+# remote_write:
+#   - url: "https://prometheus-remote-write-endpoint"
+#     basic_auth:
+#       username: ""
+#       password: ""
+
+# Storage configuration
+storage:
+  tsdb:
+    retention:
+      time: 30d
+      size: 10GB
+    
+# Web configuration
+web:
+  enable_admin_api: true
+  enable_lifecycle: true
+  max_connections: 512
+  read_timeout: 30s

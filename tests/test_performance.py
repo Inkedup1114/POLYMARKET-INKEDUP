@@ -6,7 +6,6 @@ This module tests performance characteristics under various loads.
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

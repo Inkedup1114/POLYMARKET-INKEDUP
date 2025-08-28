@@ -38,7 +38,22 @@ class SnapshotService:
     def __init__(self, cfg: BotConfig, db: DatabaseManager | None = None):
         self.cfg = cfg
         self.db = db or DatabaseManager()
-        self.client = HTTPClient(self.cfg.api_base)
+
+        # Create rate limiter if enabled
+        rate_limiter = None
+        if self.cfg.rate_limiting.enabled:
+            from .rate_limiter import APIRateLimiter
+
+            rate_limiter = APIRateLimiter(self.cfg.rate_limiting.default_config)
+
+            # Configure endpoint-specific rate limits
+            for (
+                endpoint_type,
+                config,
+            ) in self.cfg.rate_limiting.endpoint_configs.items():
+                rate_limiter.configure_endpoint(endpoint_type, config)
+
+        self.client = HTTPClient(str(self.cfg.api_base), rate_limiter=rate_limiter)
         self._running = False
         self._task: asyncio.Task | None = None
         self._stop_event = asyncio.Event()

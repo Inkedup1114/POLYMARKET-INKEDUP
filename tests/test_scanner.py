@@ -1,6 +1,5 @@
-import asyncio
-from typing import Generator
-from unittest.mock import AsyncMock, MagicMock, patch
+from collections.abc import Generator
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

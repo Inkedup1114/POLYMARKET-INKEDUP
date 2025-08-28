@@ -1,0 +1,250 @@
+# AlertManager configuration for InkedUp Polymarket Trading Bot
+global:
+  # SMTP configuration for email alerts
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@inkedup-trading.local'
+  smtp_auth_username: ''
+  smtp_auth_password: ''
+  smtp_require_tls: true
+
+# Template files
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route configuration
+route:
+  # Default route configuration
+  group_by: ['alertname', 'severity', 'component']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'default-receiver'
+  
+  # Specific routes for different alert types
+  routes:
+    # Critical system alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 5s
+      group_interval: 5s
+      repeat_interval: 5m
+      continue: true
+    
+    # Trading-specific alerts
+    - match:
+        component: trading
+      receiver: 'trading-alerts'
+      group_wait: 30s
+      group_interval: 2m
+      repeat_interval: 30m
+      continue: true
+    
+    # System resource alerts
+    - match:
+        component: system
+      receiver: 'system-alerts'
+      group_wait: 1m
+      group_interval: 5m
+      repeat_interval: 1h
+    
+    # Database alerts
+    - match:
+        component: database
+      receiver: 'database-alerts'
+      group_wait: 1m
+      group_interval: 5m
+      repeat_interval: 2h
+    
+    # WebSocket connection alerts
+    - match:
+        component: websocket
+      receiver: 'connectivity-alerts'
+      group_wait: 15s
+      group_interval: 1m
+      repeat_interval: 15m
+      continue: true
+    
+    # Monitoring infrastructure alerts
+    - match:
+        component: monitoring
+      receiver: 'monitoring-alerts'
+      group_wait: 2m
+      group_interval: 10m
+      repeat_interval: 4h
+
+# Inhibition rules to reduce alert noise
+inhibit_rules:
+  # If application is down, don't alert on individual component failures
+  - source_match:
+      alertname: 'ApplicationDown'
+    target_match_re:
+      component: '(trading|database|websocket)'
+    equal: ['instance']
+
+  # If WebSocket is down, don't alert on trading inactivity
+  - source_match:
+      alertname: 'WebSocketDisconnected'
+    target_match:
+      alertname: 'NoTradingActivity'
+    equal: ['instance']
+
+  # If system CPU is critical, don't alert on high CPU warnings
+  - source_match:
+      alertname: 'CriticalCPUUsage'
+    target_match:
+      alertname: 'HighCPUUsage'
+    equal: ['instance']
+
+  # If system memory is critical, don't alert on high memory warnings
+  - source_match:
+      alertname: 'CriticalMemoryUsage'
+    target_match:
+      alertname: 'HighMemoryUsage'
+    equal: ['instance']
+
+# Notification receivers
+receivers:
+  # Default receiver - logs alerts
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8080/webhook/alerts'
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: ''
+            password: ''
+        title: 'InkedUp Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Severity:** {{ .Labels.severity }}
+          **Component:** {{ .Labels.component }}
+          **Instance:** {{ .Labels.instance }}
+          **Status:** {{ .Status }}
+          {{ end }}
+
+  # Critical alerts - immediate notifications via multiple channels
+  - name: 'critical-alerts'
+    # Webhook notification to application
+    webhook_configs:
+      - url: 'http://host.docker.internal:8080/webhook/critical-alerts'
+        send_resolved: true
+        title: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          **CRITICAL ALERT DETECTED**
+          
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Component:** {{ .Labels.component }}
+          **Instance:** {{ .Labels.instance }}
+          **Started:** {{ .StartsAt }}
+          {{ if .EndsAt }}**Resolved:** {{ .EndsAt }}{{ end }}
+          {{ end }}
+    
+    # Email notification for critical alerts (configure SMTP above)
+    email_configs:
+      - to: 'admin@inkedup-trading.local'
+        from: 'alerts@inkedup-trading.local'
+        subject: '🚨 CRITICAL: InkedUp Trading Bot Alert - {{ .GroupLabels.alertname }}'
+        html: |
+          <h2>🚨 Critical Alert: {{ .GroupLabels.alertname }}</h2>
+          <p><strong>Severity:</strong> {{ .GroupLabels.severity | toUpper }}</p>
+          <p><strong>Component:</strong> {{ .GroupLabels.component }}</p>
+          
+          <table border="1" cellpadding="5" cellspacing="0">
+            <tr>
+              <th>Alert</th>
+              <th>Description</th>
+              <th>Instance</th>
+              <th>Started</th>
+              <th>Status</th>
+            </tr>
+            {{ range .Alerts }}
+            <tr>
+              <td>{{ .Annotations.summary }}</td>
+              <td>{{ .Annotations.description }}</td>
+              <td>{{ .Labels.instance }}</td>
+              <td>{{ .StartsAt }}</td>
+              <td>{{ .Status }}</td>
+            </tr>
+            {{ end }}
+          </table>
+
+  # Trading-specific alerts
+  - name: 'trading-alerts'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8080/webhook/trading-alerts'
+        send_resolved: true
+        title: '💹 Trading Alert: {{ .GroupLabels.alertname }}'
+        text: |
+          **Trading System Alert**
+          
+          {{ range .Alerts }}
+          **Alert:** {{ .Annotations.summary }}
+          **Description:** {{ .Annotations.description }}
+          **Severity:** {{ .Labels.severity }}
+          **Started:** {{ .StartsAt }}
+          {{ if .EndsAt }}**Resolved:** {{ .EndsAt }}{{ end }}
+          {{ end }}
+
+  # System resource alerts
+  - name: 'system-alerts'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8080/webhook/system-alerts'
+        send_resolved: true
+        title: '🖥️ System Alert: {{ .GroupLabels.alertname }}'
+
+  # Database alerts
+  - name: 'database-alerts'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8080/webhook/database-alerts'
+        send_resolved: true
+        title: '🗄️ Database Alert: {{ .GroupLabels.alertname }}'
+
+  # Connectivity alerts (WebSocket, network)
+  - name: 'connectivity-alerts'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8080/webhook/connectivity-alerts'
+        send_resolved: true
+        title: '🌐 Connectivity Alert: {{ .GroupLabels.alertname }}'
+
+  # Monitoring infrastructure alerts
+  - name: 'monitoring-alerts'
+    webhook_configs:
+      - url: 'http://host.docker.internal:8080/webhook/monitoring-alerts'
+        send_resolved: true
+        title: '📊 Monitoring Alert: {{ .GroupLabels.alertname }}'
+
+    # Email for monitoring system issues
+    email_configs:
+      - to: 'devops@inkedup-trading.local'
+        from: 'alerts@inkedup-trading.local'
+        subject: '📊 Monitoring System Alert - {{ .GroupLabels.alertname }}'
+        body: |
+          Monitoring system alert detected:
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Started: {{ .StartsAt }}
+          {{ if .EndsAt }}Resolved: {{ .EndsAt }}{{ end }}
+          {{ end }}
+
+# Slack integration (optional - configure webhook URL)
+# slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+
+# PagerDuty integration (optional - configure integration key)
+# pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Custom webhook templates (optional)
+# webhook_configs:
+#   - url: 'https://your-custom-webhook-url'
+#     send_resolved: true
+#     http_config:
+#       bearer_token: 'your-bearer-token'
+#     title: 'Custom Alert: {{ .GroupLabels.alertname }}'
+#     text: |
+#       Custom notification format here

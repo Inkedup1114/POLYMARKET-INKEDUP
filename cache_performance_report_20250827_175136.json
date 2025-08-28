@@ -1,0 +1,117 @@
+{
+  "report_metadata": {
+    "generated_at": "2025-08-27T17:51:36.568453",
+    "time_window_hours": 1,
+    "total_events": 10000
+  },
+  "performance_summary": {
+    "timestamp": "2025-08-27T17:51:36.568435",
+    "time_window_minutes": 60,
+    "overall_metrics": {
+      "total_requests": 10000,
+      "overall_hit_rate": 0.658,
+      "overall_error_rate": 0.0,
+      "active_caches": 3
+    },
+    "cache_details": {
+      "volatile_data": {
+        "cache_name": "volatile_data",
+        "time_window_minutes": 60,
+        "timestamp": "2025-08-27T17:51:36.563093",
+        "requests": {
+          "total": 3357,
+          "hits": 2989,
+          "misses": 368,
+          "errors": 0,
+          "evictions": 0
+        },
+        "rates": {
+          "hit_rate": 0.8903783139708072,
+          "miss_rate": 0.10962168602919273,
+          "error_rate": 0.0
+        },
+        "response_times_ms": {
+          "average": 0.009974518594977612,
+          "p95": 0.016450881958007812,
+          "p99": 0.023365020751953125,
+          "min": 0.0030994415283203125,
+          "max": 0.051021575927734375
+        },
+        "data": {
+          "average_size_bytes": 54.85680829708933,
+          "total_served_bytes": 163967,
+          "cache_efficiency": 145992.66100685135
+        },
+        "health_score": 95.61413510697278
+      },
+      "memory_constrained": {
+        "cache_name": "memory_constrained",
+        "time_window_minutes": 60,
+        "timestamp": "2025-08-27T17:51:36.565316",
+        "requests": {
+          "total": 3328,
+          "hits": 302,
+          "misses": 3026,
+          "errors": 0,
+          "evictions": 0
+        },
+        "rates": {
+          "hit_rate": 0.0907451923076923,
+          "miss_rate": 0.9092548076923077,
+          "error_rate": 0.0
+        },
+        "response_times_ms": {
+          "average": 0.00621521702179542,
+          "p95": 0.010967254638671875,
+          "p99": 0.016450881958007812,
+          "min": 0.00286102294921875,
+          "max": 0.047206878662109375
+        },
+        "data": {
+          "average_size_bytes": 58.682119205298015,
+          "total_served_bytes": 17722,
+          "cache_efficiency": 1608.186298076923
+        },
+        "health_score": 63.629186170605514
+      },
+      "high_performance": {
+        "cache_name": "high_performance",
+        "time_window_minutes": 60,
+        "timestamp": "2025-08-27T17:51:36.568349",
+        "requests": {
+          "total": 3315,
+          "hits": 3289,
+          "misses": 26,
+          "errors": 0,
+          "evictions": 0
+        },
+        "rates": {
+          "hit_rate": 0.9921568627450981,
+          "miss_rate": 0.00784313725490196,
+          "error_rate": 0.0
+        },
+        "response_times_ms": {
+          "average": 0.010551047001489147,
+          "p95": 0.016927719116210938,
+          "p99": 0.024557113647460938,
+          "min": 0.003814697265625,
+          "max": 0.09560585021972656
+        },
+        "data": {
+          "average_size_bytes": 58.0717543326239,
+          "total_served_bytes": 190998,
+          "cache_efficiency": 189499.97647058824
+        },
+        "health_score": 99.68521940510377
+      }
+    },
+    "recommendations": [
+      "memory_constrained: Consider increasing TTL or cache size (hit rate: 9.07%)"
+    ]
+  },
+  "alerts_summary": {
+    "active_alerts": 0,
+    "critical_alerts": 0,
+    "high_alerts": 0
+  }
+}

@@ -1,0 +1,106 @@
+# Docker Compose configuration for local development
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: development
+      args:
+        BUILD_DATE: ${BUILD_DATE:-}
+        VERSION: ${VERSION:-latest}
+        VCS_REF: ${VCS_REF:-}
+    image: inkedup-polymarket-bot:dev
+    container_name: inkedup-bot-dev
+    ports:
+      - "8080:8080"
+      - "8888:8888"  # Jupyter notebook
+    volumes:
+      - .:/app
+      - bot-data:/app/data
+      - bot-logs:/app/logs
+    environment:
+      - APP_ENV=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - DATABASE_URL=sqlite:///data/bot_dev.db
+      - USE_STUB_CLIENT=true
+      - ENABLE_TEST_ENDPOINTS=true
+      - FEATURE_COMPLEMENT_ARBITRAGE=true
+      - FEATURE_SPREAD_ALERTS=true
+      - FEATURE_WEBSOCKET_STREAMING=true
+    networks:
+      - inkedup-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: inkedup-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - inkedup-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: inkedup-prometheus-dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - inkedup-net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: inkedup-grafana-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - inkedup-net
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+volumes:
+  bot-data:
+    driver: local
+  bot-logs:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  inkedup-net:
+    driver: bridge

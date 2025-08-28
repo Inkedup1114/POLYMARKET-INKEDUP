@@ -1,0 +1,273 @@
+# Prometheus alerting rules for InkedUp Polymarket Bot
+groups:
+  - name: trading.rules
+    interval: 30s
+    rules:
+      # Critical trading alerts
+      - alert: TradingSystemDown
+        expr: up{job="inkedup-bot"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          category: trading
+          service: inkedup-bot
+        annotations:
+          summary: "Trading system is down"
+          description: "The InkedUp trading bot has been down for more than 30 seconds"
+          impact: "All trading operations stopped"
+
+      - alert: HighErrorRate
+        expr: rate(inkedup_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          category: trading
+          service: inkedup-bot
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+          current_value: "{{ $value | humanizePercentage }}"
+          threshold: "10%"
+
+      - alert: RiskCapExceeded
+        expr: inkedup_risk_utilization_percent > 95
+        for: 1m
+        labels:
+          severity: critical
+          category: trading
+          service: risk-management
+        annotations:
+          summary: "Risk cap exceeded"
+          description: "Risk utilization is at {{ $value }}%, exceeding the 95% threshold"
+          current_value: "{{ $value }}%"
+          threshold: "95%"
+
+      - alert: APIResponseTimeCritical
+        expr: histogram_quantile(0.95, rate(inkedup_api_request_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: critical
+          category: performance
+          service: api
+        annotations:
+          summary: "API response time critically high"
+          description: "95th percentile API response time is {{ $value }}s"
+          current_value: "{{ $value }}s"
+          threshold: "10s"
+
+      - alert: NoArbitrageOpportunities
+        expr: increase(inkedup_arbitrage_opportunities_found_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+          service: arbitrage
+        annotations:
+          summary: "No arbitrage opportunities found"
+          description: "No arbitrage opportunities have been found in the last 10 minutes"
+          impact: "Potential revenue loss"
+
+      - alert: DatabaseConnectionHigh
+        expr: inkedup_database_connections_active / inkedup_database_connections_max > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+          service: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection usage is at {{ $value | humanizePercentage }}"
+
+      - alert: PositionStuck
+        expr: max_over_time(inkedup_position_age_minutes[1h]) > 60
+        for: 5m
+        labels:
+          severity: warning
+          category: trading
+          service: position-management
+        annotations:
+          summary: "Position held for too long"
+          description: "Position {{ $labels.position_id }} has been held for {{ $value }} minutes"
+
+  - name: system.rules
+    interval: 30s
+    rules:
+      # System health alerts
+      - alert: HighMemoryUsage
+        expr: (inkedup_memory_usage_bytes / inkedup_memory_limit_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: system
+          service: inkedup-bot
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: DiskSpaceLow
+        expr: inkedup_disk_free_bytes / inkedup_disk_total_bytes < 0.1
+        for: 5m
+        labels:
+          severity: critical
+          category: system
+          service: storage
+        annotations:
+          summary: "Disk space critically low"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining"
+
+      - alert: CPUUsageHigh
+        expr: rate(inkedup_cpu_usage_seconds_total[5m]) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          category: system
+          service: inkedup-bot
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }}"
+
+      - alert: DatabaseDown
+        expr: up{job="postgres"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          category: system
+          service: database
+        annotations:
+          summary: "Database is down"
+          description: "PostgreSQL database has been unreachable for 30 seconds"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: warning
+          category: system
+          service: cache
+        annotations:
+          summary: "Redis cache is down"
+          description: "Redis has been unreachable for 1 minute"
+
+  - name: business.rules
+    interval: 60s
+    rules:
+      # Business logic alerts
+      - alert: DailyLossThreshold
+        expr: inkedup_daily_pnl_usd < -500
+        for: 5m
+        labels:
+          severity: critical
+          category: business
+          service: risk-management
+        annotations:
+          summary: "Daily loss threshold exceeded"
+          description: "Daily P&L is ${{ $value }}, exceeding the -$500 threshold"
+          current_value: "${{ $value }}"
+          threshold: "-$500"
+
+      - alert: LowTradingVolume
+        expr: rate(inkedup_orders_executed_total[1h]) < 0.1
+        for: 1h
+        labels:
+          severity: warning
+          category: business
+          service: trading
+        annotations:
+          summary: "Low trading volume"
+          description: "Trading volume is {{ $value }} orders/hour, below expected threshold"
+
+      - alert: MarketDataStale
+        expr: time() - inkedup_last_market_update_timestamp > 300
+        for: 2m
+        labels:
+          severity: warning
+          category: business
+          service: market-data
+        annotations:
+          summary: "Market data is stale"
+          description: "Market data hasn't been updated in {{ $value }} seconds"
+
+      - alert: StrategyPerformanceDegraded
+        expr: inkedup_strategy_success_rate{strategy="complement_arbitrage"} < 0.7
+        for: 15m
+        labels:
+          severity: warning
+          category: business
+          service: strategy
+        annotations:
+          summary: "Strategy performance degraded"
+          description: "{{ $labels.strategy }} success rate is {{ $value | humanizePercentage }}"
+
+  - name: external.rules
+    interval: 60s
+    rules:
+      # External service alerts
+      - alert: PolymarketAPIDown
+        expr: up{job="blackbox", instance="https://clob.polymarket.com/ping"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: external
+          service: polymarket-api
+        annotations:
+          summary: "Polymarket API is unreachable"
+          description: "Cannot reach Polymarket CLOB API"
+
+      - alert: WebSocketConnectionFailed
+        expr: inkedup_websocket_connected == 0
+        for: 1m
+        labels:
+          severity: warning
+          category: external
+          service: websocket
+        annotations:
+          summary: "WebSocket connection failed"
+          description: "WebSocket connection to Polymarket has been disconnected"
+
+      - alert: SSLCertificateExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          category: security
+          service: ssl
+        annotations:
+          summary: "SSL certificate expiring soon"
+          description: "SSL certificate for {{ $labels.instance }} expires in {{ $value }} days"
+
+  - name: performance.rules
+    interval: 30s
+    rules:
+      # Performance monitoring alerts
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(inkedup_db_query_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile query time is {{ $value }}s"
+
+      - alert: HighGoroutineCount
+        expr: inkedup_goroutines_count > 1000
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+          service: inkedup-bot
+        annotations:
+          summary: "High goroutine count"
+          description: "Goroutine count is {{ $value }}, indicating potential resource leaks"
+
+      - alert: MessageQueueBacklog
+        expr: inkedup_message_queue_size > 1000
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+          service: messaging
+        annotations:
+          summary: "Message queue backlog"
+          description: "Message queue has {{ $value }} pending messages"

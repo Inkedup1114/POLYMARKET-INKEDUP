@@ -1,0 +1,35 @@
+# Prometheus configuration for local development
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # InkedUp Polymarket Bot metrics
+  - job_name: 'inkedup-bot'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['app:8080']
+    metrics_path: /metrics
+    scrape_timeout: 5s
+    
+  # System metrics
+  - job_name: 'node-exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+      
+  # Redis metrics (if available)
+  - job_name: 'redis'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: /metrics
+    
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
