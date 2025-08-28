@@ -5,7 +5,7 @@ typer==0.12.3
 rich==13.7.1
 orjson==3.10.3
 backoff==2.2.1
-loguru==0.7.2
+loguru==0.7.3
 pytest==8.2.0
 pytest-asyncio==0.23.6
 black==24.10.0
