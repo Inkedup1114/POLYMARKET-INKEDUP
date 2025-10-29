@@ -54,7 +54,7 @@ jobs:
         poetry run safety check --json --output safety-report.json || true
         
     - name: Upload Safety report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: safety-report
@@ -66,7 +66,7 @@ jobs:
         poetry run bandit -r inkedup_bot/ -f json -o bandit-report.json || true
         
     - name: Upload Bandit report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: bandit-report
@@ -78,7 +78,7 @@ jobs:
         pip-audit --format=json --output=pip-audit-report.json || true
         
     - name: Upload pip-audit report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v5
       if: always()
       with:
         name: pip-audit-report
